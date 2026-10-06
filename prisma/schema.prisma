@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String                    @id
+  name          String
+  email         String                    @unique
+  emailVerified Boolean                   @default(false)
+  image         String?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  accounts      Account[]
+  activities    ActivityLog[]
+  memberships   Membership[]
+  notifications Notification[]
+  opportunities OptimizationOpportunity[]
+  sessions      Session[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
+}
+
+model Organization {
+  id          String        @id @default(cuid())
+  name        String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  activities  ActivityLog[]
+  memberships Membership[]
+  workspaces  Workspace[]
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  role           MembershipRole @default(OWNER)
+  userId         String
+  organizationId String
+  createdAt      DateTime       @default(now())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Workspace {
+  id                  String                    @id @default(cuid())
+  name                String
+  isDemo              Boolean                   @default(false)
+  onboardingCompleted Boolean                   @default(false)
+  campaignObjective   String?
+  currency            String                    @default("USD")
+  country             String?
+  organizationId      String
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  activities          ActivityLog[]
+  audiences           Audience[]
+  brands              Brand[]
+  clients             Client[]
+  notifications       Notification[]
+  opportunities       OptimizationOpportunity[]
+  products            Product[]
+  organization        Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Client {
+  id          String       @id @default(cuid())
+  name        String
+  industry    String?
+  website     String?
+  status      ClientStatus @default(ACTIVE)
+  notes       String?
+  workspaceId String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  audiences   Audience[]
+  brand       Brand?
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@index([workspaceId])
+}
+
+model Brand {
+  id               String    @id @default(cuid())
+  businessName     String
+  businessType     String?
+  industry         String?
+  website          String?
+  country          String?
+  currency         String    @default("USD")
+  brandDescription String?
+  workspaceId      String
+  clientId         String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  client           Client?   @relation(fields: [clientId], references: [id])
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model Product {
+  id             String    @id @default(cuid())
+  name           String
+  description    String?
+  price          String?
+  offer          String?
+  benefits       String?
+  features       String?
+  landingPage    String?
+  whatsappNumber String?
+  workspaceId    String
+  clientId       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  client         Client?   @relation(fields: [clientId], references: [id])
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model Audience {
+  id                String    @id @default(cuid())
+  country           String?
+  region            String?
+  city              String?
+  ageMin            Int?
+  ageMax            Int?
+  gender            String?
+  language          String?
+  interests         String?
+  customAudience    String?
+  lookalikeAudience String?
+  workspaceId       String
+  clientId          String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  client            Client?   @relation(fields: [clientId], references: [id])
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  read        Boolean   @default(false)
+  workspaceId String
+  userId      String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, workspaceId])
+}
+
+model ActivityLog {
+  id             String        @id @default(cuid())
+  action         String
+  metadata       String?
+  userId         String?
+  organizationId String?
+  workspaceId    String?
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user           User?         @relation(fields: [userId], references: [id])
+  workspace      Workspace?    @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+}
+
+model OptimizationOpportunity {
+  id             String            @id @default(cuid())
+  title          String
+  reason         String
+  recommendation String
+  type           String
+  status         OpportunityStatus @default(OPEN)
+  snoozedUntil   DateTime?
+  workspaceId    String
+  userId         String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User?             @relation(fields: [userId], references: [id])
+  workspace      Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  MARKETER
+  VIEWER
+  CLIENT
+}
+
+enum ClientStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum OpportunityStatus {
+  OPEN
+  REVIEWED
+  IGNORED
+  SNOOZED
+}

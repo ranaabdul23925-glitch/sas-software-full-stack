@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: adsos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: adsos
+      POSTGRES_PASSWORD: adsos
+      POSTGRES_DB: adsos
+    ports:
+      - "5432:5432"
+    volumes:
+      - adsos_pgdata:/var/lib/postgresql/data
+
+volumes:
+  adsos_pgdata:
